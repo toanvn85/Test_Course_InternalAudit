@@ -102,7 +102,7 @@ def display_logos():
                 st.error(f"Lỗi khi hiển thị logo {logo_path}: {e}")
         
         # Hiển thị tiêu đề ứng dụng ở giữa
-        st.title("TUV NORD ISO 50001:2018 INTERNAL AUDIT TRAINING COURSE - APP")
+        st.title("TUV NORD ISO 50001:2018 INTERNAL AUDIT COURSE-APP")
     
     # Phần tải lên logo mới - ẩn trong expander để không chiếm nhiều không gian
     with st.expander("Cấu hình logo"):
@@ -143,79 +143,9 @@ def display_logos():
             if st.button("Cập nhật hiển thị logo"):
                 st.rerun()
 
-def login_register_form():
-    """Hiển thị form đăng nhập và đăng ký"""
-    # Kiểm tra xem đã chọn tab nào
-    if "auth_tab" not in st.session_state:
-        st.session_state.auth_tab = "login"
-    
-    # Tabs cho đăng nhập và đăng ký
-    tab1, tab2 = st.tabs(["Đăng nhập", "Đăng ký"])
-    
-    # Tab đăng nhập
-    with tab1:
-        with st.form("login_form"):
-            st.subheader("Đăng nhập")
-            email = st.text_input("Email", placeholder="Nhập email của bạn")
-            password = st.text_input("Mật khẩu", type="password", placeholder="Nhập mật khẩu")
-            
-            submit_button = st.form_submit_button("Đăng nhập")
-            
-            if submit_button:
-                if not email or not password:
-                    st.error("Vui lòng nhập email và mật khẩu!")
-                else:
-                    # Xác thực người dùng với Supabase
-                    user_info = get_user(email, password)
-                    
-                    if user_info:
-                        st.session_state.user_role = user_info.get("role", "student")
-                        st.session_state.user_info = {
-                            "email": user_info.get("email", email),
-                            "full_name": user_info.get("full_name", "Học viên"),
-                            "class_name": user_info.get("class", "Lớp đào tạo")
-                        }
-                        st.success("Đăng nhập thành công!")
-                        st.rerun()
-                    else:
-                        st.error("Email hoặc mật khẩu không đúng!")
-    
-    # Tab đăng ký
-    with tab2:
-        with st.form("registration_form"):
-            st.subheader("Đăng ký tài khoản mới")
-            reg_email = st.text_input("Email", placeholder="Nhập email của bạn", key="reg_email")
-            reg_password = st.text_input("Mật khẩu", type="password", placeholder="Nhập mật khẩu", key="reg_password")
-            confirm_password = st.text_input("Nhập lại mật khẩu", type="password", placeholder="Xác nhận mật khẩu")
-            full_name = st.text_input("Họ và tên", placeholder="Nhập họ và tên đầy đủ")
-            class_name = st.text_input("Lớp", placeholder="Nhập tên lớp/khóa học")
-            
-            register_button = st.form_submit_button("Đăng ký")
-            
-            if register_button:
-                # Kiểm tra các trường thông tin
-                if not reg_email or not reg_password or not confirm_password or not full_name:
-                    st.error("Vui lòng điền đầy đủ thông tin bắt buộc.")
-                elif reg_password != confirm_password:
-                    st.error("Mật khẩu nhập lại không khớp.")
-                else:
-                    # Kiểm tra email đã tồn tại chưa
-                    email_exists, message = check_email_exists(reg_email)
-                    
-                    if email_exists:
-                        st.error("Email này đã được sử dụng. Vui lòng chọn email khác.")
-                    else:
-                        # Đăng ký người dùng mới
-                        success, message = register_user(reg_email, reg_password, full_name, class_name, "student")
-                        if success:
-                            st.success(message)
-                            st.info("Vui lòng đăng nhập để tiếp tục.")
-                        else:
-                            st.error(message)
-
 def main():
     st.set_page_config(
-        page_title="Hệ thống kiểm tra sau đào tạo Đánh giá viên Nội bộ ISO 50001:2018",
+        page_title="Hệ thống kiểm tra sau Đào tạo Đánh giá viên nội bộ ISO 50001:2018",
         page_icon="📝",
         layout="wide",
         initial_sidebar_state="expanded"
@@ -242,7 +172,7 @@ def main():
     
     # Sidebar - Menu điều hướng
     with st.sidebar:
-        st.title("📝 Hệ thống kiểm tra sau đào tạo Đánh giá viên Nội bộ ISO 50001:2018")
+        st.title("📝 Hệ thống kiểm tra sau Đào tạo Đánh giá viên nội bộ ISO 50001:2018")
         st.success("Đã kết nối thành công đến Supabase!")
         
         # Hiển thị thông tin dự án (ẩn key)
@@ -261,12 +191,98 @@ def main():
         
         # Nếu chưa đăng nhập
         if not st.session_state.user_role:
-            # Sử dụng form đăng nhập/đăng ký
-            login_register_form()
+            # Tabs cho đăng nhập và đăng ký
+            tab1, tab2 = st.tabs(["Đăng nhập", "Đăng ký"])
+            
+            # Tab đăng nhập
+            with tab1:
+                with st.form("login_form"):
+                    st.subheader("Đăng nhập")
+                    email = st.text_input("Email", placeholder="Nhập email của bạn")
+                    password = st.text_input("Mật khẩu", type="password", placeholder="Nhập mật khẩu")
+                    
+                    # Thêm combobox cho loại người dùng (chỉ cho mục đích demo)
+                    user_type = st.selectbox("Loại tài khoản", ["Học viên", "Quản trị viên"])
+                    
+                    submit_button = st.form_submit_button("Đăng nhập")
+                    
+                    if submit_button:
+                        if not email or not password:
+                            st.error("Vui lòng nhập email và mật khẩu!")
+                        else:
+                            # Thử đăng nhập với Supabase
+                            user_info = get_user(email, password)
+                            
+                            if user_info:
+                                # Sử dụng thông tin từ Supabase
+                                st.session_state.user_role = user_info.get("role", "student")
+                                st.session_state.user_info = {
+                                    "email": user_info.get("email", email),
+                                    "full_name": user_info.get("full_name", "Học viên"),
+                                    "class_name": user_info.get("class", "Lớp đào tạo")
+                                }
+                                st.success("Đăng nhập thành công!")
+                                st.rerun()
+                            else:
+                                # Mục đích demo - vẫn cho phép đăng nhập với vai trò đã chọn
+                                if user_type == "Quản trị viên":
+                                    st.session_state.user_role = "admin"
+                                    st.session_state.user_info = {
+                                        "email": email,
+                                        "full_name": "Admin",
+                                        "class_name": "N/A"
+                                    }
+                                else:
+                                    st.session_state.user_role = "student"
+                                    st.session_state.user_info = {
+                                        "email": email,
+                                        "full_name": "Học viên " + email.split("@")[0],
+                                        "class_name": "Lớp đào tạo"
+                                    }
+                                
+                                st.success("Đăng nhập thành công!")
+                                st.rerun()
+            
+            # Tab đăng ký
+            with tab2:
+                with st.form("registration_form"):
+                    st.subheader("Đăng ký tài khoản mới")
+                    reg_email = st.text_input("Email", placeholder="Nhập email của bạn", key="reg_email")
+                    reg_password = st.text_input("Mật khẩu", type="password", placeholder="Nhập mật khẩu", key="reg_password")
+                    confirm_password = st.text_input("Nhập lại mật khẩu", type="password", placeholder="Xác nhận mật khẩu")
+                    full_name = st.text_input("Họ và tên", placeholder="Nhập họ và tên đầy đủ")
+                    class_name = st.text_input("Lớp", placeholder="Nhập tên lớp/khóa học")
+                    
+                    # Loại tài khoản (mặc định là Học viên)
+                    account_type = st.selectbox("Loại tài khoản", ["Học viên", "Quản trị viên"])
+                    role = "admin" if account_type == "Quản trị viên" else "student"
+                    
+                    register_button = st.form_submit_button("Đăng ký")
+                    
+                    if register_button:
+                        # Kiểm tra các trường thông tin
+                        if not reg_email or not reg_password or not confirm_password or not full_name:
+                            st.error("Vui lòng điền đầy đủ thông tin bắt buộc.")
+                        elif reg_password != confirm_password:
+                            st.error("Mật khẩu nhập lại không khớp.")
+                        else:
+                            # Kiểm tra email đã tồn tại chưa
+                            email_exists, message = check_email_exists(reg_email)
+                            
+                            if email_exists:
+                                st.error("Email này đã được sử dụng. Vui lòng chọn email khác.")
+                            else:
+                                # Đăng ký người dùng mới
+                                success, message = register_user(reg_email, reg_password, full_name, class_name, role)
+                                if success:
+                                    st.success(message)
+                                    st.info("Vui lòng đăng nhập để tiếp tục.")
+                                else:
+                                    st.error(message)
         
         # Đã đăng nhập - Hiển thị menu tương ứng
         else:
-            st.write(f"Chào mừng bạn tham dự bài kiểm sau Đánh giá viên nội bộ ISO 50001:2018, **{st.session_state.user_info['full_name']}**!")
+            st.write(f"Chào mừng bạn tham dự bài kiểm tra Đánh giá viên nội bộ ISO 50001:2018, **{st.session_state.user_info['full_name']}**!")
             
             # Menu cho quản trị viên
             if st.session_state.user_role == "admin":
@@ -306,7 +322,7 @@ def main():
                 )
     else:
         # Màn hình chào mừng
-        st.header("Chào mừng các bạn học viên của khóa Đào tạo Đánh giá viên nội bộ ISO 50001:2018 - TUV NORD!")
+        st.header("Chào mừng các bạn học viên tham gia Khóa Đào tạo đánh giá viên nội bộ ISO 50001:2018!")
         
         st.markdown("""
         ### Tính năng chính:
@@ -325,14 +341,16 @@ def main():
         """)
         
         # Hiển thị một số thông tin demo
-        with st.expander("Thông tin App: Kiểm tra Đánh giá viên nội bộ ISO 50001:2018"):
+        with st.expander("Thông tin App: Kiểm tra Đào tạo Đánh giá viên nội bộ ISO 50001:2018"):
             st.write("""
-            **Đây là phiên bản App Ver 1.0 Team ISO 50001**
+            **Đây là phiên bản App Ver 1.0 Team ISO 50001 TUV**
             
             - Nếu bạn đã có tài khoản, vui lòng đăng nhập.
             - Nếu chưa có tài khoản, vui lòng đăng ký để sử dụng hệ thống.
+            - Trong quá trình đăng nhập, bạn có thể chọn đăng nhập với vai trò Học viên hoặc Quản trị viên.
             
-            Hệ thống này sử dụng Supabase làm cơ sở dữ liệu.
+            Chú ý: Đối với tài khoản demo, không yêu cầu mật khẩu thực. Tính năng này chỉ để thử nghiệm.
+            Nếu sử dụng tài khoản thực, hệ thống sẽ kiểm tra thông tin đăng nhập với cơ sở dữ liệu Supabase.
             """)
 
 def setup_environment_variables():
