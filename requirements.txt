@@ -7,4 +7,4 @@ uuid==1.30
 unidecode
 python-docx
 fpdf==1.7.2
-pkg_resources
+setuptools
