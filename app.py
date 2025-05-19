@@ -3,6 +3,14 @@ import streamlit as st
 import json
 from datetime import datetime
 import report
+
+# ⚠️ GỌI CẤU HÌNH TRANG NGAY SAU KHI IMPORT streamlit
+st.set_page_config(
+    page_title="Hệ thống kiểm tra đánh giá học viên lớp Đánh giá viên nội bộ ISO 50001:2018",
+    page_icon="📝",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 # Thử tải từ dotenv nếu có
 try:
     from dotenv import load_dotenv
@@ -137,14 +145,7 @@ def display_logos():
             if st.button("Cập nhật hiển thị logo"):
                 st.rerun()
 
-def main():
-    st.set_page_config(
-        page_title="Hệ thống kiểm tra đánh giá học viên lớp Đánh giá viên nội bộ ISO 50001:2018",
-        page_icon="📝",
-        layout="wide",
-        initial_sidebar_state="expanded"
-    )
-    
+   
     # Hiển thị logo trước khi bất kỳ nội dung nào khác
     display_logos()
     
