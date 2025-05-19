@@ -8,3 +8,4 @@ python-docx
 fpdf==1.7.2
 setuptools  
 rich==13.7.1
+openpyxl
