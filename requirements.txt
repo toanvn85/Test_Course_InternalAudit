@@ -1,0 +1,8 @@
+streamlit==1.28.0
+supabase==1.0.3
+python-dotenv==1.0.0
+pandas==2.1.1
+matplotlib==3.8.0
+uuid==1.30
+unidecode
+docx
