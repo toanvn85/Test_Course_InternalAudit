@@ -3,7 +3,6 @@ import streamlit as st
 import json
 from datetime import datetime
 import report
-
 # Thử tải từ dotenv nếu có
 try:
     from dotenv import load_dotenv
@@ -97,7 +96,7 @@ def display_logos():
                 st.error(f"Lỗi khi hiển thị logo {logo_path}: {e}")
         
         # Hiển thị tiêu đề ứng dụng ở giữa
-        st.title("TUV NORD ISO 50001:2018 INTERNAL AUDIT TRAINING COURSE-APP")
+        st.title("TRAINING COURSE-APP")
     
     # Phần tải lên logo mới - ẩn trong expander để không chiếm nhiều không gian
     with st.expander("Cấu hình logo"):
@@ -138,14 +137,14 @@ def display_logos():
             if st.button("Cập nhật hiển thị logo"):
                 st.rerun()
 
- def main():
-     # ⚠️ GỌI CẤU HÌNH TRANG NGAY SAU KHI IMPORT streamlit
-st.set_page_config(
-    page_title="Hệ thống kiểm tra đánh giá học viên lớp Đánh giá viên nội bộ ISO 50001:2018",
-    page_icon="📝",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+def main():
+    st.set_page_config(
+        page_title="Hệ thống kiểm tra",
+        page_icon="📝",
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
+    
     # Hiển thị logo trước khi bất kỳ nội dung nào khác
     display_logos()
     
@@ -167,7 +166,7 @@ st.set_page_config(
     
     # Sidebar - Menu điều hướng
     with st.sidebar:
-        st.title("📝 Hệ thống kiểm tra đánh giá viên nội bộ ISO 50001:2018")
+        st.title("📝 Hệ thống kiểm tra ")
         st.success("Đã kết nối thành công đến Supabase!")
         
         # Hiển thị thông tin dự án (ẩn key)
@@ -212,7 +211,7 @@ st.set_page_config(
                             st.session_state.user_info = {
                                 "email": email,
                                 "full_name": "Học viên " + email.split("@")[0],
-                                "class_name": "Lớp đào tạo đánh giá viên nội bộ ISO 50001:2018"
+                                "class_name": "Lớp đào tạo"
                             }
                         
                         st.success("Đăng nhập thành công!")
@@ -262,7 +261,7 @@ st.set_page_config(
                 )
     else:
         # Màn hình chào mừng
-        st.header("Chào mừng các Bạn học viên khóa Đánh giá viên nội bộ ISO 50001:2018!")
+        st.header("Chào mừng các Bạn học viên!")
         
         st.markdown("""
         ### Tính năng chính:
@@ -283,7 +282,7 @@ st.set_page_config(
         # Hiển thị một số thông tin demo
         with st.expander("Thông tin App"):
             st.write("""
-            **Đây là phiên bản App Ver 1.0 của Team ISO 50001 TUV NORD Việt nam.**
+            **Đây là phiên bản App Ver 1.0 .**
             
             Để đăng nhập với tư cách học viên, hãy chọn "Học viên" trong form đăng nhập.
             
@@ -329,7 +328,7 @@ def setup_environment_variables():
         st.subheader("Hướng dẫn thiết lập")
         
         st.markdown("""
-        ### Thiết lập theo sự hướng dẫn của Quản trị Web app TUV       
+        ### Thiết lập theo sự hướng dẫn      
         
         """)
         
