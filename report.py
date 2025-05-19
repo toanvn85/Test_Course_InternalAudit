@@ -21,6 +21,57 @@ import pkg_resources
 
 from database_helper import get_supabase_client
 
+# Thêm vào đầu chương trình 
+import subprocess
+import sys
+
+
+# Thêm vào đầu file
+import sys
+import os
+import subprocess
+
+# Kiểm tra và cài đặt pip nếu cần
+def install_pip():
+    try:
+        print("Đang cài đặt pip...")
+        # Tải get-pip.py
+        import urllib.request
+        urllib.request.urlretrieve("https://bootstrap.pypa.io/get-pip.py", "get-pip.py")
+        
+        # Chạy get-pip.py
+        subprocess.check_call([sys.executable, "get-pip.py"])
+        print("Đã cài đặt pip thành công!")
+        return True
+    except Exception as e:
+        print(f"Lỗi khi cài đặt pip: {str(e)}")
+        return False
+
+# Kiểm tra và cài đặt FPDF2 nếu cần
+try:
+    import pkg_resources
+    fpdf_version = pkg_resources.get_distribution("fpdf").version
+    if not fpdf_version.startswith("2."):
+        print("Đang cài đặt FPDF2 cho hỗ trợ Unicode...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "fpdf2"])
+        print("Đã cài đặt FPDF2 thành công!")
+except Exception as e:
+    print(f"Lỗi khi cài đặt FPDF2: {str(e)}")
+
+# Thêm vào đầu file sau khi import các thư viện
+# Kiểm tra phiên bản FPDF
+try:
+    fpdf_pkg = pkg_resources.get_distribution("fpdf")
+    FPDF_VERSION = fpdf_pkg.version
+    IS_FPDF2 = FPDF_VERSION.startswith("2.")
+    if IS_FPDF2:
+        print(f"Đang sử dụng FPDF2 (phiên bản {FPDF_VERSION})")
+    else:
+        print(f"Đang sử dụng FPDF1 (phiên bản {FPDF_VERSION})")
+except Exception as e:
+    print(f"Không thể xác định phiên bản FPDF: {str(e)}")
+    IS_FPDF2 = False
+    FPDF_VERSION = "unknown"
 
 # Giả lập database_helper nếu không có
 try:
@@ -88,10 +139,18 @@ except ImportError:
 
 # Hàm kiểm tra cài đặt và phiên bản của FPDF
 def check_fpdf_installed():
+    """Kiểm tra cài đặt và phiên bản của FPDF"""
     try:
         # Kiểm tra phiên bản của fpdf
         fpdf_pkg = pkg_resources.get_distribution("fpdf")
-        st.success(f"FPDF đã được cài đặt, phiên bản: {fpdf_pkg.version}")
+        is_fpdf2 = fpdf_pkg.version.startswith("2.")
+        
+        if is_fpdf2:
+            st.success(f"FPDF2 đã được cài đặt, phiên bản: {fpdf_pkg.version}")
+            st.info("FPDF2 có hỗ trợ Unicode tốt hơn. Xuất PDF với tiếng Việt sẽ hoạt động tốt.")
+        else:
+            st.warning(f"FPDF1 đã được cài đặt, phiên bản: {fpdf_pkg.version}. Để hỗ trợ tiếng Việt tốt hơn, hãy cài đặt FPDF2 bằng lệnh: pip install fpdf2")
+            st.info("Báo cáo PDF sẽ không hiển thị đúng tiếng Việt có dấu. Khuyến nghị sử dụng định dạng DOCX.")
         return True
     except pkg_resources.DistributionNotFound:
         st.error("FPDF chưa được cài đặt. Hãy cài đặt bằng lệnh: pip install fpdf2")
@@ -197,15 +256,15 @@ def get_download_link_docx(buffer, filename, text):
 def get_download_link_pdf(buffer, filename, text):
     """Tạo link tải xuống cho file PDF"""
     try:
-        if buffer and hasattr(buffer, 'getvalue'):
+        if buffer and hasattr(buffer, 'getvalue') and len(buffer.getvalue()) > 0:
             b64 = base64.b64encode(buffer.getvalue()).decode()
             href = f'<a href="data:application/pdf;base64,{b64}" download="{filename}">📥 {text}</a>'
             return href
         else:
-            return f'<span style="color:red;">Không thể tạo link tải PDF. Lỗi tạo PDF.</span>'
+            return f'<span style="color:red;">Không thể tạo link tải PDF. Vui lòng sử dụng định dạng DOCX thay thế.</span>'
     except Exception as e:
         print(f"Lỗi khi tạo link tải PDF: {str(e)}")
-        return f'<span style="color:red;">Lỗi tạo link: {str(e)}</span>'
+        return f'<span style="color:red;">Lỗi tạo link tải PDF: {str(e)}</span>'
 
 def export_to_excel(dataframes, sheet_names, filename):
     """Tạo file Excel với nhiều sheet từ các DataFrame"""
@@ -438,40 +497,26 @@ def create_unicode_pdf(orientation='P', format='A4', title='Báo cáo'):
             return None
 
 def dataframe_to_pdf_fpdf(df, title, filename):
-    """Tạo file PDF từ DataFrame sử dụng FPDF với hỗ trợ Unicode tốt hơn"""
+    """Tạo file PDF từ DataFrame sử dụng FPDF với xử lý lỗi Unicode"""
     buffer = io.BytesIO()
     try:
         # Xác định hướng trang dựa vào số lượng cột
         orientation = 'L' if len(df.columns) > 5 else 'P'
         
-        # Sử dụng FPDF có hỗ trợ Unicode tốt hơn
-        pdf = create_unicode_pdf(orientation=orientation, title=title)
-        
-        if pdf is None:
-            raise Exception("Không thể tạo đối tượng PDF")
-        
+        # Khởi tạo đối tượng PDF
+        pdf = FPDF(orientation=orientation, unit='mm', format='A4')
+        pdf.set_auto_page_break(auto=True, margin=15)
         pdf.add_page()
         
-        # Thêm tiêu đề
-        try:
-            pdf.set_font('DejaVuSans', 'B', 16)
-        except:
-            try:
-                pdf.set_font('Arial', 'B', 16)
-            except:
-                pdf.set_font('Helvetica', 'B', 16)
-                
-        pdf.cell(0, 10, title, 0, 1, 'C')
+        # Thêm tiêu đề - luôn dùng font mặc định
+        pdf.set_font('Arial', 'B', 16)
+        
+        # Loại bỏ dấu tiếng Việt từ tiêu đề
+        title_ascii = title.encode('ascii', 'ignore').decode('ascii')
+        pdf.cell(0, 10, title_ascii, 0, 1, 'C')
         
         # Thêm thời gian báo cáo
-        try:
-            pdf.set_font('DejaVuSans', 'I', 10)
-        except:
-            try:
-                pdf.set_font('Arial', 'I', 10)
-            except:
-                pdf.set_font('Helvetica', 'I', 10)
-                
+        pdf.set_font('Arial', 'I', 10)
         timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         pdf.cell(0, 5, f'Thoi gian xuat bao cao: {timestamp}', 0, 1, 'R')
         pdf.ln(5)
@@ -481,46 +526,49 @@ def dataframe_to_pdf_fpdf(df, title, filename):
         margin = 10
         usable_width = page_width - 2*margin
         
-        # Chuyển đổi dữ liệu thành chuỗi và tính độ rộng tối đa cho mỗi cột
+        # Chuyển đổi dữ liệu - loại bỏ Unicode/dấu tiếng Việt
         data = []
-        headers = df.columns.tolist()
+        headers = []
         
-        # Đảm bảo dữ liệu là chuỗi và không quá dài
+        # Xử lý tiêu đề cột - loại bỏ dấu
+        for col in df.columns:
+            # Chuyển thành ASCII, loại bỏ dấu tiếng Việt
+            header_ascii = str(col).encode('ascii', 'ignore').decode('ascii')
+            headers.append(header_ascii)
+        
+        # Xử lý dữ liệu - loại bỏ dấu tiếng Việt
         for _, row in df.iterrows():
             row_data = []
-            for col in headers:
-                # Chuyển đổi tất cả kiểu dữ liệu thành chuỗi
+            for col in df.columns:
+                # Chuyển thành chuỗi và loại bỏ dấu
                 val = str(row[col]) if pd.notna(row[col]) else ""
-                # Cắt bớt chuỗi dài để tránh vấn đề hiển thị
-                if len(val) > 30:
-                    val = val[:27] + "..."
-                row_data.append(val)
+                val_ascii = val.encode('ascii', 'ignore').decode('ascii')
+                
+                # Cắt bớt chuỗi dài
+                if len(val_ascii) > 30:
+                    val_ascii = val_ascii[:27] + "..."
+                    
+                row_data.append(val_ascii)
             data.append(row_data)
         
         # Tính toán độ rộng tối ưu cho mỗi cột
         col_widths = []
         
         # Font cho nội dung
-        try:
-            pdf.set_font('DejaVuSans', '', 8)
-        except:
-            try:
-                pdf.set_font('Arial', '', 8)
-            except:
-                pdf.set_font('Helvetica', '', 8)
+        pdf.set_font('Arial', '', 8)
         
-        for i, col in enumerate(headers):
+        for i, header in enumerate(headers):
             # Độ rộng tiêu đề
-            header_width = pdf.get_string_width(str(col)) + 6  # Thêm padding
+            header_width = pdf.get_string_width(header) + 6
             
-            # Độ rộng nội dung (kiểm tra tất cả dòng)
+            # Độ rộng nội dung
             max_content_width = 0
             for row in data:
-                if i < len(row):  # Đảm bảo không vượt quá số cột
-                    content_width = pdf.get_string_width(str(row[i])) + 6
+                if i < len(row):
+                    content_width = pdf.get_string_width(row[i]) + 6
                     max_content_width = max(max_content_width, content_width)
             
-            # Lấy giá trị lớn nhất giữa độ rộng tiêu đề và nội dung
+            # Lấy giá trị lớn nhất
             max_width = max(header_width, max_content_width)
             
             # Giới hạn độ rộng cột
@@ -533,122 +581,81 @@ def dataframe_to_pdf_fpdf(df, title, filename):
             scale_factor = usable_width / total_width
             col_widths = [width * scale_factor for width in col_widths]
         
-        # Tiêu đề cột
-        try:
-            pdf.set_font('DejaVuSans', 'B', 9)
-        except:
-            try:
-                pdf.set_font('Arial', 'B', 9)
-            except:
-                pdf.set_font('Helvetica', 'B', 9)
-                
+        # Vẽ tiêu đề cột
+        pdf.set_font('Arial', 'B', 9)
         pdf.set_fill_color(240, 240, 240)
         
-        # Vẽ header cột
-        header_height = 10
-        for i, col_name in enumerate(headers):
-            # Cắt ngắn tiêu đề nếu quá dài
-            display_name = str(col_name)
-            if len(display_name) > 20:
-                display_name = display_name[:17] + "..."
-            
-            pdf.cell(col_widths[i], header_height, display_name, 1, 0, 'C', 1)
+        for i, header in enumerate(headers):
+            pdf.cell(col_widths[i], 10, header, 1, 0, 'C', 1)
         
-        pdf.ln(header_height)
+        pdf.ln(10)
         
-        # Nội dung bảng với font nhỏ hơn
-        try:
-            pdf.set_font('DejaVuSans', '', 8)
-        except:
-            try:
-                pdf.set_font('Arial', '', 8)
-            except:
-                pdf.set_font('Helvetica', '', 8)
+        # Vẽ dữ liệu
+        pdf.set_font('Arial', '', 8)
         
-        # Giới hạn số lượng hàng để tránh file quá lớn
+        # Giới hạn số lượng hàng
         max_rows = min(1000, len(df))
-        row_height = 7  # Chiều cao cơ bản
         
         for i in range(max_rows):
-            # Kiểm tra nếu còn đủ không gian trên trang
-            if pdf.get_y() + row_height > pdf.page_break_trigger:
+            # Kiểm tra trang mới
+            if pdf.get_y() + 7 > pdf.page_break_trigger:
                 pdf.add_page()
                 
                 # Vẽ lại header sau khi chuyển trang
-                try:
-                    pdf.set_font('DejaVuSans', 'B', 9)
-                except:
-                    try:
-                        pdf.set_font('Arial', 'B', 9)
-                    except:
-                        pdf.set_font('Helvetica', 'B', 9)
-                        
+                pdf.set_font('Arial', 'B', 9)
                 pdf.set_fill_color(240, 240, 240)
                 
-                for j, col_name in enumerate(headers):
-                    display_name = str(col_name)
-                    if len(display_name) > 20:
-                        display_name = display_name[:17] + "..."
-                    pdf.cell(col_widths[j], header_height, display_name, 1, 0, 'C', 1)
-                pdf.ln(header_height)
+                for j, header in enumerate(headers):
+                    pdf.cell(col_widths[j], 10, header, 1, 0, 'C', 1)
+                pdf.ln(10)
                 
-                try:
-                    pdf.set_font('DejaVuSans', '', 8)
-                except:
-                    try:
-                        pdf.set_font('Arial', '', 8)
-                    except:
-                        pdf.set_font('Helvetica', '', 8)
+                pdf.set_font('Arial', '', 8)
             
-            # Vẽ nội dung hàng
+            # Vẽ dữ liệu hàng
             for j, width in enumerate(col_widths):
-                if j < len(data[i]):  # Đảm bảo không vượt quá số cột
+                if j < len(data[i]):
                     cell_text = data[i][j]
-                    # Căn giữa cho các số, căn trái cho text
+                    # Căn giữa cho số, căn trái cho text
                     align = 'C' if cell_text.replace('.', '', 1).isdigit() else 'L'
-                    pdf.cell(width, row_height, cell_text, 1, 0, align)
+                    pdf.cell(width, 7, cell_text, 1, 0, align)
                 else:
-                    pdf.cell(width, row_height, "", 1, 0, 'C')
+                    pdf.cell(width, 7, "", 1, 0, 'C')
             
-            pdf.ln(row_height)
+            pdf.ln(7)
         
         # Thêm chân trang
         pdf.set_y(-20)
-        try:
-            pdf.set_font('DejaVuSans', 'I', 8)
-        except:
-            try:
-                pdf.set_font('Arial', 'I', 8)
-            except:
-                pdf.set_font('Helvetica', 'I', 8)
-                
+        pdf.set_font('Arial', 'I', 8)
         pdf.cell(0, 10, f'Trang {pdf.page_no()}/{"{nb}"}', 0, 0, 'C')
         pdf.cell(0, 10, 'He thong Khao sat & Danh gia', 0, 0, 'R')
         
-        # Lưu PDF vào buffer
-        pdf.output(buffer)
+        # Lưu PDF
+        pdf.output(name=buffer, dest='S')
         buffer.seek(0)
         return buffer
     except Exception as e:
         print(f"Lỗi khi tạo PDF: {str(e)}")
         traceback.print_exc()
         
-        # Trả về buffer trống khi có lỗi để tránh lỗi NoneType
-        empty_buffer = io.BytesIO()
+        # Tạo PDF lỗi đơn giản
+        error_buffer = io.BytesIO()
         try:
-            simple_pdf = FPDF()
-            simple_pdf.add_page()
-            simple_pdf.set_font('Helvetica', 'B', 16)
-            simple_pdf.cell(0, 10, 'Bao cao loi', 0, 1, 'C')
-            simple_pdf.set_font('Helvetica', '', 12)
-            simple_pdf.multi_cell(0, 10, f'Khong the tao PDF: {str(e)}', 0, 'L')
-            simple_pdf.output(empty_buffer)
-        except:
-            # Nếu cả việc tạo PDF lỗi cũng thất bại, chỉ trả về buffer trống
-            pass
-        
-        empty_buffer.seek(0)
-        return empty_buffer
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_font('Arial', 'B', 16)
+            pdf.cell(0, 10, 'Bao cao loi', 0, 1, 'C')
+            pdf.set_font('Arial', '', 10)
+            error_msg = f'Khong the tao PDF: {str(e)}'
+            pdf.multi_cell(0, 10, error_msg, 0, 'L')
+            pdf.output(name=error_buffer, dest='S')
+            error_buffer.seek(0)
+            return error_buffer
+        except Exception as e2:
+            print(f"Lỗi khi tạo báo cáo lỗi: {str(e2)}")
+            empty_buffer = io.BytesIO()
+            empty_buffer.write(b'%PDF-1.4\n%%EOF')  # Tạo PDF rỗng hợp lệ
+            empty_buffer.seek(0)
+            return empty_buffer
 
 def create_student_report_docx(student_name, student_email, student_class, submission, questions, max_possible):
     """Tạo báo cáo chi tiết bài làm của học viên dạng DOCX"""
@@ -884,28 +891,29 @@ def create_student_report_docx(student_name, student_email, student_class, submi
         return buffer
 
 def create_student_report_pdf_fpdf(student_name, student_email, student_class, submission, questions, max_possible):
-    """Tạo báo cáo chi tiết bài làm của học viên dạng PDF sử dụng FPDF với hỗ trợ Unicode tốt hơn"""
+    """Tạo báo cáo chi tiết bài làm của học viên dạng PDF sử dụng FPDF với xử lý lỗi tiếng Việt"""
     buffer = io.BytesIO()
     
     try:
-        # Tạo PDF mới với hỗ trợ Unicode
-        title = f"Bao cao chi tiet - {student_name}"  # Tránh dấu tiếng Việt trong tiêu đề
+        # Loại bỏ dấu tiếng Việt từ tên
+        student_name_ascii = student_name.encode('ascii', 'ignore').decode('ascii')
+        student_class_ascii = student_class.encode('ascii', 'ignore').decode('ascii')
         
-        # Xác định orientation dựa trên số lượng câu hỏi
+        # Tạo tiêu đề không dấu
+        title = f"Bao cao chi tiet - {student_name_ascii}"
+        
+        # Tạo PDF mới 
         orientation = 'L' if len(questions) > 10 else 'P'
         pdf = FPDF(orientation=orientation, format='A4')
-        
-        # Thiết lập các tùy chọn
         pdf.set_auto_page_break(auto=True, margin=15)
-        pdf.alias_nb_pages()
         pdf.add_page()
         
-        # Thêm tiêu đề - sử dụng font mặc định
-        pdf.set_font('Helvetica', 'B', 16)
+        # Thêm tiêu đề
+        pdf.set_font('Arial', 'B', 16)
         pdf.cell(0, 10, title, 0, 1, 'C')
         
         # Thêm thời gian báo cáo
-        pdf.set_font('Helvetica', 'I', 10)
+        pdf.set_font('Arial', 'I', 10)
         timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         pdf.cell(0, 5, f'Thoi gian xuat bao cao: {timestamp}', 0, 1, 'R')
         pdf.ln(5)
@@ -937,11 +945,11 @@ def create_student_report_pdf_fpdf(student_name, student_email, student_class, s
                 pass
         
         # Thông tin học viên - Tiêu đề
-        pdf.set_font('Helvetica', 'B', 12)
+        pdf.set_font('Arial', 'B', 12)
         pdf.cell(0, 10, 'Thong tin hoc vien', 0, 1, 'L')
         
         # Bảng thông tin học viên
-        pdf.set_font('Helvetica', '', 10)
+        pdf.set_font('Arial', '', 10)
         info_width = 190 if orientation == 'P' else 277
         col1_width = 50
         col2_width = info_width - col1_width
@@ -949,11 +957,11 @@ def create_student_report_pdf_fpdf(student_name, student_email, student_class, s
         # Tạo khung thông tin học viên
         pdf.set_fill_color(240, 240, 240)
         
-        # Thông tin học viên - loại bỏ dấu tiếng Việt để tránh lỗi
+        # Thông tin học viên - loại bỏ dấu tiếng Việt
         info_data = [
-            ['Ho va ten', student_name],
+            ['Ho va ten', student_name_ascii],
             ['Email', student_email],
-            ['Lop', student_class],
+            ['Lop', student_class_ascii],
             ['Thoi gian nop', submission_time]
         ]
         
@@ -964,11 +972,11 @@ def create_student_report_pdf_fpdf(student_name, student_email, student_class, s
         pdf.ln(5)
         
         # Chi tiết câu trả lời - Tiêu đề
-        pdf.set_font('Helvetica', 'B', 12)
+        pdf.set_font('Arial', 'B', 12)
         pdf.cell(0, 10, 'Chi tiet cau tra loi', 0, 1, 'L')
         
         # Tiêu đề bảng chi tiết
-        pdf.set_font('Helvetica', 'B', 9)
+        pdf.set_font('Arial', 'B', 9)
         pdf.set_fill_color(240, 240, 240)
         
         # Xác định độ rộng cột - điều chỉnh phù hợp với nội dung và orientation
@@ -994,7 +1002,7 @@ def create_student_report_pdf_fpdf(student_name, student_email, student_class, s
         pdf.ln(10)
         
         # Vẽ dữ liệu câu trả lời
-        pdf.set_font('Helvetica', '', 9)
+        pdf.set_font('Arial', '', 9)
         
         for q in questions:
             q_id = str(q.get("id", ""))
@@ -1038,33 +1046,37 @@ def create_student_report_pdf_fpdf(student_name, student_email, student_class, s
             
             # Chuẩn bị nội dung (loại bỏ dấu tiếng Việt)
             question_text = f"Cau {q.get('id', '')}: {q.get('question', '')}"
+            question_text_ascii = question_text.encode('ascii', 'ignore').decode('ascii')
+            
             # Giới hạn độ dài của các chuỗi
-            if len(question_text) > (45 if orientation == 'P' else 80):
-                question_text = question_text[:(42 if orientation == 'P' else 77)] + "..."
+            if len(question_text_ascii) > (45 if orientation == 'P' else 80):
+                question_text_ascii = question_text_ascii[:(42 if orientation == 'P' else 77)] + "..."
                 
             user_answer_text = ", ".join([str(a) for a in user_ans]) if user_ans else "Khong tra loi"
-            if len(user_answer_text) > (25 if orientation == 'P' else 40):
-                user_answer_text = user_answer_text[:(22 if orientation == 'P' else 37)] + "..."
+            user_answer_text_ascii = user_answer_text.encode('ascii', 'ignore').decode('ascii')
+            if len(user_answer_text_ascii) > (25 if orientation == 'P' else 40):
+                user_answer_text_ascii = user_answer_text_ascii[:(22 if orientation == 'P' else 37)] + "..."
                 
             correct_answer_text = ", ".join([str(a) for a in expected])
-            if len(correct_answer_text) > (25 if orientation == 'P' else 40):
-                correct_answer_text = correct_answer_text[:(22 if orientation == 'P' else 37)] + "..."
+            correct_answer_text_ascii = correct_answer_text.encode('ascii', 'ignore').decode('ascii')
+            if len(correct_answer_text_ascii) > (25 if orientation == 'P' else 40):
+                correct_answer_text_ascii = correct_answer_text_ascii[:(22 if orientation == 'P' else 37)] + "..."
             
             # Kiểm tra phần còn lại của trang
             if pdf.get_y() + 10 > pdf.page_break_trigger:
                 pdf.add_page()
                 # Vẽ lại header sau khi chuyển trang
-                pdf.set_font('Helvetica', 'B', 9)
+                pdf.set_font('Arial', 'B', 9)
                 pdf.set_fill_color(240, 240, 240)
                 for i, header in enumerate(headers):
                     pdf.cell(widths[i], 10, header, 1, 0, 'C', 1)
                 pdf.ln(10)
-                pdf.set_font('Helvetica', '', 9)
+                pdf.set_font('Arial', '', 9)
             
             # Vẽ dữ liệu
-            pdf.cell(q_width, 10, question_text, 1, 0, 'L')
-            pdf.cell(user_width, 10, user_answer_text, 1, 0, 'L')
-            pdf.cell(correct_width, 10, correct_answer_text, 1, 0, 'L')
+            pdf.cell(q_width, 10, question_text_ascii, 1, 0, 'L')
+            pdf.cell(user_width, 10, user_answer_text_ascii, 1, 0, 'L')
+            pdf.cell(correct_width, 10, correct_answer_text_ascii, 1, 0, 'L')
             
             # Đặt màu cho kết quả Đúng/Sai
             if is_correct:
@@ -1081,11 +1093,11 @@ def create_student_report_pdf_fpdf(student_name, student_email, student_class, s
         pdf.ln(5)
         
         # Tổng kết
-        pdf.set_font('Helvetica', 'B', 12)
+        pdf.set_font('Arial', 'B', 12)
         pdf.cell(0, 10, 'Tong ket', 0, 1, 'L')
         
         # Bảng tổng kết
-        pdf.set_font('Helvetica', '', 10)
+        pdf.set_font('Arial', '', 10)
         pdf.set_fill_color(240, 240, 240)
         
         summary_col1 = 50
@@ -1104,12 +1116,12 @@ def create_student_report_pdf_fpdf(student_name, student_email, student_class, s
         
         # Thêm chân trang
         pdf.set_y(-20)
-        pdf.set_font('Helvetica', 'I', 8)
+        pdf.set_font('Arial', 'I', 8)
         pdf.cell(0, 10, f'Trang {pdf.page_no()}/{"{nb}"}', 0, 0, 'C')
         pdf.cell(0, 10, 'He thong Khao sat & Danh gia', 0, 0, 'R')
         
         # Lưu PDF vào buffer
-        pdf.output(buffer)
+        pdf.output(name=buffer, dest='S')
         
     except Exception as e:
         print(f"Lỗi khi tạo báo cáo PDF: {str(e)}")
@@ -1117,16 +1129,23 @@ def create_student_report_pdf_fpdf(student_name, student_email, student_class, s
         
         # Tạo báo cáo đơn giản nếu gặp lỗi
         try:
-            simple_pdf = FPDF()
-            simple_pdf.add_page()
-            simple_pdf.set_font('Helvetica', 'B', 16)
-            simple_pdf.cell(0, 10, f'Bao cao chi tiet - {student_name}', 0, 1, 'C')
-            simple_pdf.set_font('Helvetica', '', 10)
-            error_text = f'Khong the hien thi bao cao chi tiet voi font tieng Viet. Vui long su dung dinh dang DOCX.\nLoi: {str(e)}'
-            simple_pdf.multi_cell(0, 10, error_text, 0, 'L')
-            simple_pdf.output(buffer)
+            error_buffer = io.BytesIO()
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_font('Arial', 'B', 16)
+            pdf.cell(0, 10, f'Bao cao chi tiet - {student_name.encode("ascii", "ignore").decode("ascii")}', 0, 1, 'C')
+            pdf.set_font('Arial', '', 10)
+            error_text = f'Khong the hien thi bao cao chi tiet voi font tieng Viet.\nSu dung dinh dang DOCX de xem day du.\nLoi: {str(e)}'
+            pdf.multi_cell(0, 10, error_text, 0, 'L')
+            pdf.output(name=error_buffer, dest='S')
+            error_buffer.seek(0)
+            return error_buffer
         except Exception as e2:
             print(f"Không thể tạo báo cáo thay thế: {str(e2)}")
+            empty_buffer = io.BytesIO()
+            empty_buffer.write(b'%PDF-1.4\n%%EOF')  # Tạo PDF rỗng hợp lệ
+            empty_buffer.seek(0)
+            return empty_buffer
     
     buffer.seek(0)
     return buffer
@@ -1779,6 +1798,22 @@ def display_export_tab(df_all_submissions=None, df_questions=None, df_students_l
         
     st.subheader("Xuất báo cáo")
     
+    # Kiểm tra phiên bản FPDF
+    try:
+        import pkg_resources
+        fpdf_version = pkg_resources.get_distribution("fpdf").version
+        is_fpdf2 = fpdf_version.startswith("2.")
+        
+        if not is_fpdf2:
+            st.warning("""
+            ⚠️ Lưu ý: Bạn đang sử dụng FPDF1 không hỗ trợ tiếng Việt có dấu. 
+            Các báo cáo PDF sẽ không hiển thị được tiếng Việt có dấu hoặc có thể gặp lỗi khi mở.
+            Khuyên dùng định dạng DOCX hoặc cài đặt fpdf2: `pip install fpdf2`
+            """)
+    except:
+        st.warning("Không xác định được phiên bản FPDF. Có thể gặp lỗi khi xuất PDF.")
+    
+     
     # Thêm tab cho các loại báo cáo khác nhau
     report_tab1, report_tab2 = st.tabs(["Báo cáo tổng hợp", "Báo cáo theo học viên"])
     
