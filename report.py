@@ -421,7 +421,7 @@ class UNIOCDF_FPDF(FPDF):
         self.cell(0, 10, f'Trang {self.page_no()}/{self.alias_nb_pages()}', 0, 0, 'C')
         
         # Thêm chân trang hệ thống
-        self.cell(0, 10, 'He thong Khao sat & Danh gia', 0, 0, 'R')
+        self.cell(0, 10, 'He thong kiểm tra Đánh giá viên nội bộ ISO 50001:2018 TUV', 0, 0, 'R')
 
 # Tạo một instance FPDF có khả năng xử lý Unicode
 def create_unicode_pdf(orientation='P', format='A4', title='Báo cáo'):
