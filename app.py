@@ -15,7 +15,13 @@ from question_manager import manage_questions
 from surveyhandler import survey_form
 from stats_dashboard import stats_dashboard
 from admin_dashboard import admin_dashboard
-from database_helper import get_supabase_client, check_supabase_config
+from database_helper import (
+    get_supabase_client, 
+    check_supabase_config, 
+    get_user, 
+    register_user, 
+    check_email_exists
+)
 from PIL import Image, UnidentifiedImageError
 
            
@@ -96,7 +102,7 @@ def display_logos():
                 st.error(f"Lỗi khi hiển thị logo {logo_path}: {e}")
         
         # Hiển thị tiêu đề ứng dụng ở giữa
-        st.title("TUV NORD ISO 50001:2018 INTERNAL AUDIT TRAINING COURSE-APP")
+        st.title("TUV NORD ISO 50001:2018 INTERNAL AUDIT TRAINING COURSE - APP")
     
     # Phần tải lên logo mới - ẩn trong expander để không chiếm nhiều không gian
     with st.expander("Cấu hình logo"):
@@ -137,9 +143,79 @@ def display_logos():
             if st.button("Cập nhật hiển thị logo"):
                 st.rerun()
 
+def login_register_form():
+    """Hiển thị form đăng nhập và đăng ký"""
+    # Kiểm tra xem đã chọn tab nào
+    if "auth_tab" not in st.session_state:
+        st.session_state.auth_tab = "login"
+    
+    # Tabs cho đăng nhập và đăng ký
+    tab1, tab2 = st.tabs(["Đăng nhập", "Đăng ký"])
+    
+    # Tab đăng nhập
+    with tab1:
+        with st.form("login_form"):
+            st.subheader("Đăng nhập")
+            email = st.text_input("Email", placeholder="Nhập email của bạn")
+            password = st.text_input("Mật khẩu", type="password", placeholder="Nhập mật khẩu")
+            
+            submit_button = st.form_submit_button("Đăng nhập")
+            
+            if submit_button:
+                if not email or not password:
+                    st.error("Vui lòng nhập email và mật khẩu!")
+                else:
+                    # Xác thực người dùng với Supabase
+                    user_info = get_user(email, password)
+                    
+                    if user_info:
+                        st.session_state.user_role = user_info.get("role", "student")
+                        st.session_state.user_info = {
+                            "email": user_info.get("email", email),
+                            "full_name": user_info.get("full_name", "Học viên"),
+                            "class_name": user_info.get("class", "Lớp đào tạo")
+                        }
+                        st.success("Đăng nhập thành công!")
+                        st.rerun()
+                    else:
+                        st.error("Email hoặc mật khẩu không đúng!")
+    
+    # Tab đăng ký
+    with tab2:
+        with st.form("registration_form"):
+            st.subheader("Đăng ký tài khoản mới")
+            reg_email = st.text_input("Email", placeholder="Nhập email của bạn", key="reg_email")
+            reg_password = st.text_input("Mật khẩu", type="password", placeholder="Nhập mật khẩu", key="reg_password")
+            confirm_password = st.text_input("Nhập lại mật khẩu", type="password", placeholder="Xác nhận mật khẩu")
+            full_name = st.text_input("Họ và tên", placeholder="Nhập họ và tên đầy đủ")
+            class_name = st.text_input("Lớp", placeholder="Nhập tên lớp/khóa học")
+            
+            register_button = st.form_submit_button("Đăng ký")
+            
+            if register_button:
+                # Kiểm tra các trường thông tin
+                if not reg_email or not reg_password or not confirm_password or not full_name:
+                    st.error("Vui lòng điền đầy đủ thông tin bắt buộc.")
+                elif reg_password != confirm_password:
+                    st.error("Mật khẩu nhập lại không khớp.")
+                else:
+                    # Kiểm tra email đã tồn tại chưa
+                    email_exists, message = check_email_exists(reg_email)
+                    
+                    if email_exists:
+                        st.error("Email này đã được sử dụng. Vui lòng chọn email khác.")
+                    else:
+                        # Đăng ký người dùng mới
+                        success, message = register_user(reg_email, reg_password, full_name, class_name, "student")
+                        if success:
+                            st.success(message)
+                            st.info("Vui lòng đăng nhập để tiếp tục.")
+                        else:
+                            st.error(message)
+
 def main():
     st.set_page_config(
-        page_title="Hệ thống kiểm tra học viên khóa Đánh giá viên nội bộ ISO 50001:2018",
+        page_title="Hệ thống kiểm tra sau đào tạo Đánh giá viên Nội bộ ISO 50001:2018",
         page_icon="📝",
         layout="wide",
         initial_sidebar_state="expanded"
@@ -166,7 +242,7 @@ def main():
     
     # Sidebar - Menu điều hướng
     with st.sidebar:
-        st.title("📝 Hệ thống kiểm tra học viên khóa Đánh giá viên nội bộ ISO 50001:2018 ")
+        st.title("📝 Hệ thống kiểm tra sau đào tạo Đánh giá viên Nội bộ ISO 50001:2018")
         st.success("Đã kết nối thành công đến Supabase!")
         
         # Hiển thị thông tin dự án (ẩn key)
@@ -185,43 +261,12 @@ def main():
         
         # Nếu chưa đăng nhập
         if not st.session_state.user_role:
-            with st.form("login_form"):
-                st.subheader("Đăng nhập")
-                email = st.text_input("Email", placeholder="Nhập email của bạn")
-                password = st.text_input("Mật khẩu", type="password", placeholder="Nhập mật khẩu")
-                
-                # Thêm combobox cho loại người dùng (chỉ cho mục đích demo)
-                user_type = st.selectbox("Loại tài khoản", ["Học viên", "Quản trị viên"])
-                
-                submit_button = st.form_submit_button("Đăng nhập")
-                
-                if submit_button:
-                    # Trong ứng dụng thực tế sẽ có xác thực đúng mật khẩu
-                    # Đây chỉ là demo đơn giản
-                    if email and password:
-                        if user_type == "Quản trị viên":
-                            st.session_state.user_role = "admin"
-                            st.session_state.user_info = {
-                                "email": email,
-                                "full_name": "Admin",
-                                "class_name": "N/A"
-                            }
-                        else:
-                            st.session_state.user_role = "student"
-                            st.session_state.user_info = {
-                                "email": email,
-                                "full_name": "Học viên " + email.split("@")[0],
-                                "class_name": "Lớp đào tạo"
-                            }
-                        
-                        st.success("Đăng nhập thành công!")
-                        st.rerun()
-                    else:
-                        st.error("Vui lòng nhập email và mật khẩu!")
+            # Sử dụng form đăng nhập/đăng ký
+            login_register_form()
         
         # Đã đăng nhập - Hiển thị menu tương ứng
         else:
-            st.write(f"Chào mừng bạn tham dự khóa Đánh giá viên nội bộ ISO 50001:2018, **{st.session_state.user_info['full_name']}**!")
+            st.write(f"Chào mừng bạn tham dự bài kiểm sau Đánh giá viên nội bộ ISO 50001:2018, **{st.session_state.user_info['full_name']}**!")
             
             # Menu cho quản trị viên
             if st.session_state.user_role == "admin":
@@ -261,10 +306,10 @@ def main():
                 )
     else:
         # Màn hình chào mừng
-        st.header("Chào mừng các bạn học viên khóa Đánh giá viên nội bộ ISO 50001:2018!")
+        st.header("Chào mừng các bạn học viên của khóa Đào tạo Đánh giá viên nội bộ ISO 50001:2018 - TUV NORD!")
         
         st.markdown("""
-        ### Tính năng chính của TUV NORD app:
+        ### Tính năng chính:
         
         **Dành cho học viên:**
         - Làm bài khảo sát với nhiều loại câu hỏi
@@ -276,19 +321,18 @@ def main():
         - Báo cáo & thống kê: Phân tích kết quả, xem báo cáo chi tiết
         - Quản trị hệ thống: Quản lý học viên, xuất dữ liệu
         
-        Vui lòng đăng nhập ở thanh bên trái để sử dụng hệ thống.
+        Vui lòng đăng nhập hoặc đăng ký ở thanh bên trái để sử dụng hệ thống.
         """)
         
         # Hiển thị một số thông tin demo
-        with st.expander("Thông tin App"):
+        with st.expander("Thông tin App: Kiểm tra Đánh giá viên nội bộ ISO 50001:2018"):
             st.write("""
-            **Đây là phiên bản App Ver 1.0 Team ISO 50k.**
+            **Đây là phiên bản App Ver 1.0 Team ISO 50001**
             
-            Để đăng nhập với tư cách học viên, hãy chọn "Học viên" trong form đăng nhập.
+            - Nếu bạn đã có tài khoản, vui lòng đăng nhập.
+            - Nếu chưa có tài khoản, vui lòng đăng ký để sử dụng hệ thống.
             
-            Để đăng nhập với tư cách quản trị viên, hãy chọn "Quản trị viên" trong form đăng nhập.
-            
-            Chú ý: Đây chỉ là bản dành cho kiểm tra học viên, không yêu cầu mật khẩu thực.
+            Hệ thống này sử dụng Supabase làm cơ sở dữ liệu.
             """)
 
 def setup_environment_variables():
