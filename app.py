@@ -96,7 +96,7 @@ def display_logos():
                 st.error(f"Lỗi khi hiển thị logo {logo_path}: {e}")
         
         # Hiển thị tiêu đề ứng dụng ở giữa
-        st.title("TRAINING COURSE-APP")
+        st.title("TUV NORD ISO 50001:2018 INTERNAL AUDIT TRAINING COURSE-APP")
     
     # Phần tải lên logo mới - ẩn trong expander để không chiếm nhiều không gian
     with st.expander("Cấu hình logo"):
@@ -139,7 +139,7 @@ def display_logos():
 
 def main():
     st.set_page_config(
-        page_title="Hệ thống kiểm tra",
+        page_title="Hệ thống kiểm tra học viên khóa Đánh giá viên nội bộ ISO 50001:2018",
         page_icon="📝",
         layout="wide",
         initial_sidebar_state="expanded"
@@ -166,7 +166,7 @@ def main():
     
     # Sidebar - Menu điều hướng
     with st.sidebar:
-        st.title("📝 Hệ thống kiểm tra ")
+        st.title("📝 Hệ thống kiểm tra học viên khóa Đánh giá viên nội bộ ISO 50001:2018 ")
         st.success("Đã kết nối thành công đến Supabase!")
         
         # Hiển thị thông tin dự án (ẩn key)
@@ -221,7 +221,7 @@ def main():
         
         # Đã đăng nhập - Hiển thị menu tương ứng
         else:
-            st.write(f"Chào mừng, **{st.session_state.user_info['full_name']}**!")
+            st.write(f"Chào mừng bạn tham dự khóa Đánh giá viên nội bộ ISO 50001:2018, **{st.session_state.user_info['full_name']}**!")
             
             # Menu cho quản trị viên
             if st.session_state.user_role == "admin":
@@ -261,10 +261,10 @@ def main():
                 )
     else:
         # Màn hình chào mừng
-        st.header("Chào mừng các Bạn học viên!")
+        st.header("Chào mừng các bạn học viên khóa Đánh giá viên nội bộ ISO 50001:2018!")
         
         st.markdown("""
-        ### Tính năng chính:
+        ### Tính năng chính của TUV NORD app:
         
         **Dành cho học viên:**
         - Làm bài khảo sát với nhiều loại câu hỏi
@@ -282,7 +282,7 @@ def main():
         # Hiển thị một số thông tin demo
         with st.expander("Thông tin App"):
             st.write("""
-            **Đây là phiên bản App Ver 1.0 .**
+            **Đây là phiên bản App Ver 1.0 Team ISO 50k.**
             
             Để đăng nhập với tư cách học viên, hãy chọn "Học viên" trong form đăng nhập.
             
